@@ -1,0 +1,238 @@
+<html>
+    <head>
+        <title>Bertram Coding Example: Part 2</title>
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/default.min.css">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+        <style>
+            body {
+                font-size: 1.5em;
+            }
+        </style>
+    </head>
+    <body>
+<pre><code class="javascript">
+    &#39;use strict&#39;;
+    //AWS SDK
+    const AWS = require(&#39;aws-sdk&#39;);
+    AWS.config.region = process.env.REGION;
+    
+    //AWS dynamodb client
+    const dynamoDb = new AWS.DynamoDB.DocumentClient();
+    
+    //AWS S3 client
+    const S3 = new AWS.S3();
+    
+    //elasticsearch stuff
+    const elasticsearch = require(&#39;elasticsearch&#39;);
+    const esClient = new elasticsearch.Client({
+        host: process.env.BERTRAM_CODING_ES_URL,
+        log: &#39;error&#39;,
+        maxRetries: 5,
+        requestTimeout: 300000,
+        connectionClass: require(&#39;http-aws-es&#39;),
+        amazonES: { credentials: new AWS.EnvironmentCredentials(&#39;AWS&#39;) }
+    });
+    
+    // cross-domain HTTP headers to send with responses
+    const CORS_HEADERS = {
+        &quot;Access-Control-Allow-Origin&quot;: &quot;*&quot;, 
+        &quot;Access-Control-Allow-Credentials&quot;: true 
+    };
+    
+    // handler for adding names to 3 places: dynamodb table, s3 bucket, elasticsearch
+    module.exports.add = (event, context, callback) =&gt; {
+        console.log(&#39;add&#39;,event);
+        let output = {statusCode: null, data: {}, meta: {}, message:null};
+    
+        // wrap initial work in a promise
+        return new Promise(function(resolve, reject) {
+            // read input
+            let entry = {dateCreated: new Date()};        
+            if (event.queryStringParameters) entry.display = event.queryStringParameters.name;
+            if (!entry.display &amp;&amp; event.body) entry.display = JSON.parse(event.body).name;         
+            if (!entry.display) {
+                output.message = &#39;Name missing&#39;;
+                output.statusCode = 400;
+                reject(output);
+            }
+            // normalize the name to use it as a key
+            entry.name = entry.display.toLowerCase().trim();
+    
+            // put into the object database (dynamodb)
+            let dynamoDbParams = {
+                TableName: process.env.BERTRAM_CODING_GUESTBOOK_DYNAMODB_TABLE,
+                Key: {name: entry.name},
+                Item: entry
+            };
+            dynamoDb.put(dynamoDbParams, (error, dbOutput) =&gt; {
+                console.log(&#39;dbOutput&#39;,dbOutput,&#39;error&#39;,error);
+                if (error) {
+                    output.message = error.toString()
+                    // fail the wrapper promise
+                    reject(&#39;Could not save in dynamodb&#39;);
+                }
+                // resolve the wrapper promise
+                else resolve(entry);
+            });
+        })
+        .then(function(entry) {
+            // save the entry in s3 as a JSON file
+            // wrap s3 work in a promise
+            return new Promise(function(resolve, reject) {
+                let body = JSON.stringify(entry), //string content for s3 object
+                    // normalized name fo s3 object
+                    key = &#39;data/guestbook/&#39;+entry.name.replace(/([^a-z0-9]+)/gi, &#39;_&#39;)+&#39;.json&#39;,
+                    // input params for s3 client
+                    s3Params = { 
+                        Bucket: process.env.BERTRAM_CODING_S3_WEB_SITE_BUCKET, 
+                        Key: key, 
+                        Body: body,
+                        ContentType: &#39;application/json&#39; 
+                    };
+                S3.putObject(s3Params, function (err, data) {
+                    if (err) {
+                        console.log(&quot;Could not save object in s3&quot;,s3Params, err);
+                        output.message = &#39;Could not save in s3&#39;;
+                        reject(err);
+                    }
+                    else {
+                        console.log(&quot;Successfully saved object in s3&quot;,s3Params, data);
+                        resolve(entry);
+                    }
+                });
+            });
+        })
+        .then(function(entry) {
+            console.log(&#39;s3 output&#39;, JSON.stringify(entry));
+            // save the entry in ES
+            // already returns a promise
+            return esClient.index({
+                index: process.env.BERTRAM_CODING_GUESTBOOK_ES_INDEX,
+                id: entry.name, // use the lower case name as the unique id
+                refresh: &quot;wait_for&quot;, //dont return until document is available in the index
+                body: entry
+            })
+            .then(function(esOutput) {
+                console.log(&#39;esOutput&#39;, JSON.stringify(esOutput));
+                return Promise.resolve(entry);
+            });        
+        })    
+        .then(function(entry) {
+            output.message = &#39;Entry added&#39;;
+            output.statusCode = 200;
+            callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS,  body: JSON.stringify(output)});
+    
+        })
+        .catch(function(err) {
+            console.log(&#39;err&#39;, err, JSON.stringify(err));
+            output.statusCode = output.statusCode || 500;
+            callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS, body: JSON.stringify(output)});
+        });
+    };
+    
+    // handler for listing all guestbook entries using elasticsearch
+    module.exports.list = (event, context, callback) =&gt; {
+        console.log(&#39;list&#39;,event);
+        let output = {statusCode: 200, data: [], meta: {}, message:null};
+        return esClient.search({
+            index: process.env.BERTRAM_CODING_GUESTBOOK_ES_INDEX,
+            expand_wildcards: &#39;all&#39;,
+            allow_no_indices: true, // do not fail if the index has not been created
+            body: {&quot;query&quot;:{&quot;match_all&quot;:{}}, &quot;sort&quot;:{&quot;dateCreated&quot;:&quot;asc&quot;}}
+        })
+        .then(function(esResponse) {
+            console.log(&#39;done searching &#39;, JSON.stringify(esResponse));
+            output.message = &#39;Entries listed&#39;;
+            if (esResponse.hits &amp;&amp; esResponse.hits.hits)
+                output.data = esResponse.hits.hits.map(function(itm) {return itm._source;});
+            callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS,  body: JSON.stringify(output)});
+    
+        })
+        .catch(function(err) {
+            console.log(&#39;err&#39;, JSON.stringify(err));
+            callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS, body: JSON.stringify(output)});
+        });
+    };
+    
+    // handler for deleting all guestbook entries from dynamodb, s3, and elasticsearch
+    module.exports.clear = (event, context, callback) =&gt; {
+        console.log(&#39;clear&#39;,event);
+        let output = {statusCode: null, data: {}, meta: {}, message:null};
+        // delete things out of the object database
+        // first get a list of the keys for the records
+        return dynamoDb.scan({
+            TableName: process.env.BERTRAM_CODING_GUESTBOOK_DYNAMODB_TABLE,
+            AttributesToGet: [&#39;name&#39;],
+            Limit: 100000
+        })
+        .promise()
+        .then(function(rows) {
+            let allDeletes = [];
+            // do individual deletes for each record in the table
+            rows.Items.forEach(function(element) {
+                allDeletes.push(dynamoDb.delete({
+                    TableName: process.env.BERTRAM_CODING_GUESTBOOK_DYNAMODB_TABLE,
+                    Key: element,
+                }).promise());
+            }); 
+            return Promise.all(allDeletes);           
+        })
+        .then(function() {
+            return new Promise(function(resolve, reject) {
+                // first get a list of all the s3 keys 
+                let params = { 
+                    Bucket: process.env.BERTRAM_CODING_S3_WEB_SITE_BUCKET, 
+                    Prefix: &#39;data/guestbook/&#39;,
+                    MaxKeys: 1000
+                };
+                S3.listObjectsV2(params, function(err, data) {
+                    if (err) reject(err);
+                    else {
+                        let keys = [];
+                        data.Contents.forEach(function(obj) {
+                            keys.push(obj.Key);
+                        });
+                        console.log(&#39;keys&#39;,keys);
+                        resolve(keys);    
+                    }
+                });    
+            })
+            .then(function(keys) {
+                let deletes = [];
+                // delete each s3 object by key
+                keys.forEach(function(key) {
+                    let params = { 
+                        Bucket: process.env.BERTRAM_CODING_S3_WEB_SITE_BUCKET, 
+                        Key: key
+                    };
+                    deletes.push(new Promise(function(resolve, reject) {
+                        S3.deleteObject(params, function (err, data) {
+                            if (err) reject(err);
+                            else resolve(data);
+                        })
+                    }));
+                })
+                return Promise.all(deletes);    
+            });
+        })
+        .then(function(s3output) {
+            console.log(&#39;s3 output&#39;, JSON.stringify(s3output));
+            // delete the entire elasticsearch index
+            return esClient.indices.delete({ &quot;index&quot;: process.env.BERTRAM_CODING_GUESTBOOK_ES_INDEX });
+        })    
+        .then(function(entry) {
+            output.message = &#39;All entries cleared&#39;;
+            output.statusCode = 200;
+            callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS,  body: JSON.stringify(output)});
+    
+        })
+        .catch(function(err) {
+            console.log(&#39;err&#39;, err, JSON.stringify(err));
+            output.statusCode = output.statusCode || 500;
+            callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS, body: JSON.stringify(output)});
+        });
+    };                 
+</code></pre>
+    </body>
+</html>

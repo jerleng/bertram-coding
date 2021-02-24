@@ -1,0 +1,44 @@
+<html>
+    <head>
+        <!--title for page-->
+        <title>Bertram Coding Example: Part 1</title>
+
+        <!--in-page style-->
+        <style>
+            body {
+                color: darkslateblue;
+            }
+        </style>
+    </head>
+    <body>
+        <!--h1>Hi!</h1-->
+
+        <!--Bootstrap container-->
+        <div>
+            <div>
+                <!--Main heading-->
+                <h1>My Local Guestbook</h1>
+            </div>
+            <div>
+                <!--Label for input field-->
+                <label for="name">Enter Your Name</label>
+                <!--Input field for name-->
+                <input type="text" id="name" name="name" placeholder="John Doe" autocomplete="off">
+            </div>            
+            <div>
+                <!--Button to add name-->
+                <button id="add-button" type="button">
+                    Add
+                </button>
+            </div>
+            <div>
+                <!--Guestbook list heading-->
+                <h2>Visitors</h2>
+                <!--Visitor list-->
+                <ol id="visitor-list">
+                </ol>
+            </div>    
+
+        </div>
+    </body>
+</html>

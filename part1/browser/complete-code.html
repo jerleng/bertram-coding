@@ -1,0 +1,172 @@
+<html>
+    <head>
+        <title>Bertram Coding Example: Part 1</title>
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/default.min.css">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+        <style>
+            body {
+                font-size: 1.5em;;
+            }
+        </style>
+    </head>
+    <body>
+<pre><code>
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;!--title for page--&gt;
+        &lt;title&gt;Bertram Coding Example: Part 1&lt;/title&gt;
+
+        &lt;!--helper libray for page style--&gt;
+        &lt;link href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css&quot; rel=&quot;stylesheet&quot;&gt;
+
+        &lt;!--in-page style--&gt;
+        &lt;style&gt;
+            body {
+                color: darkslateblue;
+            }
+        &lt;/style&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;!--h1&gt;Hi!&lt;/h1--&gt;
+
+        &lt;!--Bootstrap container--&gt;
+        &lt;div class=&quot;container pt-3&quot;&gt;
+            &lt;div&gt;
+                &lt;!--Main heading--&gt;
+                &lt;h1&gt;My Local Guestbook&lt;/h1&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;form-floating mb-3&quot;&gt;
+                &lt;!--Input field for name--&gt;
+                &lt;input type=&quot;text&quot; class=&quot;form-control&quot; id=&quot;name&quot; name=&quot;name&quot; placeholder=&quot;John Doe&quot; autocomplete=&quot;off&quot;&gt;
+                &lt;!--Label for input field--&gt;
+                &lt;label for=&quot;name&quot;&gt;Enter Your Name&lt;/label&gt;
+            &lt;/div&gt;            
+            &lt;div class=&quot;mb-3&quot;&gt;
+                &lt;!--Button to add name--&gt;
+                &lt;button id=&quot;add-button&quot; type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;
+                    Add
+                &lt;/button&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;mt-3&quot;&gt;
+                &lt;!--Guestbook list heading--&gt;
+                &lt;h2&gt;Visitors&lt;/h2&gt;
+                &lt;!--Visitor list--&gt;
+                &lt;ol id=&quot;visitor-list&quot;&gt;
+                &lt;/ol&gt;
+                &lt;button id=&quot;clear-button&quot; type=&quot;button&quot; class=&quot;btn btn-danger&quot;&gt;
+                    Clear
+                &lt;/button&gt;
+            &lt;/div&gt;    
+
+        &lt;/div&gt;
+    &lt;/body&gt;
+    &lt;script type=&quot;text/javascript&quot;&gt;
+        //page loaded event
+        //alert(&#39;Page loaded!&#39;);
+
+        // timer event
+        //window.setTimeout(function(){alert(&#39;Timer fired!&#39;);}, 3000);
+        
+        // &quot;handler&quot; for adding names
+        function handleAdd(event) {
+            // button click event
+            //alert(&#39;Button clicked!&#39;);
+            event.preventDefault();
+
+            // reference input field
+            let nameInput = document.getElementById(&#39;name&#39;);
+
+            // get entered name
+            let newName = nameInput.value;
+
+            // check that a value was provided
+            if (!newName) {
+                // no new name, alert
+                alert(&#39;Please enter your name!&#39;);
+                // exit
+                return;
+            }
+            else {
+                // reference visitor list
+                let visitorList = document.getElementById(&#39;visitor-list&#39;);
+                
+                // check through existing visitor list for duplicate
+                for (let i = 0; i &lt; visitorList.children.length; i++) {
+                    //get lower case existing name 
+                    let existingName = visitorList.children[i].innerHTML.toLowerCase();
+                    // compare to lower case of new name
+                    if (existingName == newName.toLowerCase() ) {
+                        alert(&#39;You already added this name!&#39;);
+                        // clear out input field
+                        nameInput.value = null;
+                        return;
+                    }
+                }
+                // create a new item for the visitor list
+                let listItem = document.createElement(&#39;li&#39;);
+                // add the new name as text for the new item
+                listItem.innerText = newName;
+                // append the new item to the visitor list
+                visitorList.appendChild(listItem);
+                // clear out input field
+                nameInput.value = null;
+
+                // save names locally
+                // get locally stored existing names as an array
+                let existingGuestbookEntries = JSON.parse(localStorage.getItem(&#39;guestbook&#39;) || &#39;[]&#39;);
+                // add new name to array
+                existingGuestbookEntries.push(newName)
+                // save new list of names
+                localStorage.setItem(&#39;guestbook&#39;, JSON.stringify(existingGuestbookEntries));
+
+                // exit
+                return;
+            }
+        }
+
+        function handleClear(event) {
+            let visitorList = document.getElementById(&#39;visitor-list&#39;);
+            while (visitorList.firstChild) {
+                visitorList.removeChild(visitorList.firstChild);
+            }
+            localStorage.removeItem(&#39;guestbook&#39;);
+        }
+
+        // reference button
+        let addButton = document.getElementById(&#39;add-button&#39;);
+        // add when button clicked
+        addButton.addEventListener(&#39;click&#39;, handleAdd, false);   
+
+        // reference infput field
+        let inputField = document.getElementById(&#39;name&#39;);
+        // add when &quot;enter&quot; pressed
+        inputField.addEventListener(&#39;keypress&#39;, function(event) {
+            // check for &quot;enter&quot; 
+            if (event.keyCode == 13) {
+                // enter was pressed, forward event to handler
+                handleAdd(event);
+            }
+            //
+        }, false);        
+
+        // reference button
+        let clearButton = document.getElementById(&#39;clear-button&#39;);
+        // add when button clicked
+        clearButton.addEventListener(&#39;click&#39;, handleClear, false);   
+
+        // load in saved visitors
+        let existingGuestbookEntries = JSON.parse(localStorage.getItem(&#39;guestbook&#39;) || &#39;[]&#39;);
+        let visitorList = document.getElementById(&#39;visitor-list&#39;);
+        existingGuestbookEntries.forEach(function(name) {
+            let listItem = document.createElement(&#39;li&#39;);
+            // add the new name as text for the new item
+            listItem.innerText = name;
+                // append the new item to the visitor list
+            visitorList.appendChild(listItem);
+        });
+    &lt;/script&gt;
+&lt;/html&gt;
+</code></pre>
+    </body>
+</html>

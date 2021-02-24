@@ -1,0 +1,65 @@
+<html>
+    <head>
+        <title>Bertram Coding Example: Part 1</title>
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/default.min.css">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+        <style>
+            body {
+                font-size: 1.5em;;
+            }
+        </style>
+    </head>
+    <body>
+<pre><code>
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;!--title for page--&gt;
+        &lt;title&gt;Bertram Coding Example: Part 1&lt;/title&gt;
+
+        &lt;!--helper libray for page style--&gt;
+        &lt;link href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css&quot; rel=&quot;stylesheet&quot;&gt;
+
+        &lt;!--in-page style--&gt;
+        &lt;style&gt;
+            body {
+                color: darkslateblue;
+            }
+        &lt;/style&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;!--h1&gt;Hi!&lt;/h1--&gt;
+
+        &lt;!--Bootstrap container--&gt;
+        &lt;div class=&quot;container pt-3&quot;&gt;
+            &lt;div&gt;
+                &lt;!--Main heading--&gt;
+                &lt;h1&gt;My Local Guestbook&lt;/h1&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;form-floating mb-3&quot;&gt;
+                &lt;!--Input field for name--&gt;
+                &lt;input type=&quot;text&quot; class=&quot;form-control&quot; id=&quot;name&quot; name=&quot;name&quot; placeholder=&quot;John Doe&quot; autocomplete=&quot;off&quot;&gt;
+                &lt;!--Label for input field--&gt;
+                &lt;label for=&quot;name&quot;&gt;Enter Your Name&lt;/label&gt;
+            &lt;/div&gt;            
+            &lt;div class=&quot;mb-3&quot;&gt;
+                &lt;!--Button to add name--&gt;
+                &lt;button id=&quot;add-button&quot; type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;
+                    Add
+                &lt;/button&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;mt-3&quot;&gt;
+                &lt;!--Guestbook list heading--&gt;
+                &lt;h2&gt;Visitors&lt;/h2&gt;
+                &lt;!--Visitor list--&gt;
+                &lt;ol id=&quot;visitor-list&quot;&gt;
+                &lt;/ol&gt;
+            &lt;/div&gt;    
+
+        &lt;/div&gt;
+    &lt;/body&gt;
+
+&lt;/html&gt;                
+</code></pre>
+    </body>
+</html>

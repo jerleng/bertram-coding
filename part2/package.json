@@ -1,0 +1,14 @@
+{
+  "name": "bertram-coding",
+  "description": "",
+  "version": "0.1.0",
+  "dependencies": {
+    "elasticsearch": "^16.7.2",
+    "http-aws-es": "^6.0.0"
+  },
+  "devDependencies": {
+    "serverless-cloudfront-invalidate": "^1.8.0",
+    "serverless-prune-plugin": "^1.4.3",
+    "serverless-s3-sync": "^1.16.1"
+  }
+}

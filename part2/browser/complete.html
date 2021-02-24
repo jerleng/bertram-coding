@@ -1,0 +1,174 @@
+<html>
+    <head>
+        <!--title for page-->
+        <title>Bertram Coding Example: Part 2</title>
+
+        <!--helper libray for page style-->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+        <!--in-page style-->
+        <style>
+            body {
+                color: darkslateblue;
+            }
+            #overlay {
+                position: fixed; /* Sit on top of the page content */
+                display: none; /* Hidden by default */
+                width: 100%; /* Full width (cover the whole page) */
+                height: 100%; /* Full height (cover the whole page) */
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.5); /* Black background with opacity */
+                z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
+                cursor: pointer; /* Add a pointer on hover */
+            } 
+            #overlay>img {
+                margin-top:300px;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }           
+        </style>
+    </head>
+    <body>
+        <!--Bootstrap container-->
+        <div class="container pt-3">
+            <div>
+                <!--Main heading-->
+                <h1>My Global Guestbook</h1>
+            </div>
+            <div class="form-floating mb-3">
+                <!--Input field for name-->
+                <input type="text" class="form-control" id="name" name="name" placeholder="John Doe" autocomplete="off">
+                <!--Label for input field-->
+                <label for="name">Enter Your Name</label>
+            </div>            
+            <div class="mb-3">
+                <!--Button to add name-->
+                <button id="add-button" type="button" class="btn btn-primary">
+                    Add
+                </button>
+            </div>
+            <div class="mt-3">
+                <!--Guestbook list heading-->
+                <h2>Visitors</h2>
+                <!--Visitor list-->
+                <ol id="visitor-list">
+                </ol>
+                <button id="clear-button" type="button" class="btn btn-danger">
+                    Clear
+                </button>
+            </div>    
+
+        </div>
+        <div id="overlay">
+            <img src="https://cutewallpaper.org/21/loading-gif-transparent-background/Isabel-PRO-Healthcare.gif"/>
+        </div>        
+    </body>
+    <script type="text/javascript">
+        // AWS API gateway host for services
+        const host = 'o4eminvrlk';
+
+        // function to show/hide "busy overlay"
+        function showOverlay(on) {
+            document.getElementById("overlay").style.display = on ? "block" : "none";
+        }
+
+        // "handler" for adding names
+        function handleAdd(event) {
+            // button click event
+            //alert('Button clicked!');
+            event.preventDefault();
+
+            // reference input field
+            let nameInput = document.getElementById('name');
+
+            // get entered name
+            let newName = nameInput.value;
+
+            // check that a value was provided
+            if (!newName) {
+                // no new name, alert
+                alert('Please enter your name!');
+                // exit
+                return;
+            }
+            else {
+                showOverlay(true);            
+                // call microservice
+                fetch('https://'+host+'.execute-api.us-east-1.amazonaws.com/dev/add',
+                    {
+                        method: 'POST',
+                        //cors: 'no-cors',
+                        //referrerPolicy: 'unsafe-url',
+                        body: JSON.stringify({name:newName})                        
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        nameInput.value = null;
+                        handleList(event);
+                    });
+                return;
+            }
+        }
+
+        function handleClear(event) {
+            showOverlay(true);            
+            fetch('https://'+host+'.execute-api.us-east-1.amazonaws.com/dev/clear')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        handleList(event);
+                    });      
+        }
+
+        function handleList(event) {
+            showOverlay(true);            
+            let visitorList = document.getElementById('visitor-list');
+            while (visitorList.firstChild) {
+                visitorList.removeChild(visitorList.firstChild);
+            }
+            fetch('https://'+host+'.execute-api.us-east-1.amazonaws.com/dev/list')
+                    .then(response => response.json())
+                    .then(jsonOutput => {
+                        console.log(jsonOutput);
+                        jsonOutput.data.forEach(function(item) {
+                            let listItem = document.createElement('li');
+                            // add the new name as text for the new item
+                            listItem.innerText = item.display;
+                                // append the new item to the visitor list
+                            visitorList.appendChild(listItem);
+                        });
+                        showOverlay(false);            
+                    });            
+        }
+
+        // reference button
+        let addButton = document.getElementById('add-button');
+        // add when button clicked
+        addButton.addEventListener('click', handleAdd, false);   
+
+        // reference infput field
+        let inputField = document.getElementById('name');
+        // add when "enter" pressed
+        inputField.addEventListener('keypress', function(event) {
+            // check for "enter" 
+            if (event.keyCode == 13) {
+                // enter was pressed, forward event to handler
+                handleAdd(event);
+            }
+            //
+        }, false);        
+
+        // reference button
+        let clearButton = document.getElementById('clear-button');
+        // add when button clicked
+        clearButton.addEventListener('click', handleClear, false);   
+
+        // load in saved visitors
+        handleList();
+    </script>
+</html>

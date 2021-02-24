@@ -1,0 +1,137 @@
+service: bertram-coding
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  prune:
+    automatic: true
+    number: 2
+  s3Sync:
+    - bucketName: bertram-coding-web-${self:custom.stage}
+      localDir: browser
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: ${self:provider.environment.REGION}
+  stage: dev
+  stackTags:
+    STACK: ${self:service}
+    STAGE: ${self:custom.stage}
+  environment:
+    REGION: us-east-1
+    STAGE: ${self:custom.stage}
+    BERTRAM_CODING_S3_WEB_SITE_BUCKET: bertram-coding-web-${self:custom.stage}
+    BERTRAM_CODING_GUESTBOOK_DYNAMODB_TABLE: bertram-coding-guestbook-${self:custom.stage}
+    BERTRAM_CODING_ES_DOMAIN: bertram-coding-${self:custom.stage}
+    BERTRAM_CODING_GUESTBOOK_ES_INDEX: guestbook-${self:custom.stage}
+    BERTRAM_CODING_ES_URL:
+      Fn::GetAtt: [ BertramCodingESDomain , DomainEndpoint ]
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:*
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - "es:*"
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - "s3:*"
+      Resource: "*"
+
+functions:
+  add:
+    handler: server/handler.add
+    timeout: 30
+    events:
+      - http:
+          path: add
+          method: any
+          cors: true
+  list:
+    handler: server/handler.list
+    timeout: 30
+    events:
+      - http:
+          path: list
+          method: any
+          cors: true
+  clear:
+    handler: server/handler.clear
+    timeout: 30
+    events:
+      - http:
+          path: clear
+          method: any
+          cors: true
+
+resources:
+  Resources:
+    BertramCodingESDomain:
+      Type: "AWS::Elasticsearch::Domain"
+      Properties:
+        DomainName: ${self:provider.environment.BERTRAM_CODING_ES_DOMAIN}
+        EBSOptions:
+          EBSEnabled: true
+          VolumeType: gp2
+          VolumeSize: 10
+        ElasticsearchClusterConfig:
+          InstanceType: t2.small.elasticsearch
+          InstanceCount: 1
+          DedicatedMasterEnabled: false
+          ZoneAwarenessEnabled: false
+        ElasticsearchVersion: 7.8  
+    GuestbookDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: name
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: name
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.BERTRAM_CODING_GUESTBOOK_DYNAMODB_TABLE}
+    BertramCodingWebSiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: PublicRead
+        BucketName: ${self:provider.environment.BERTRAM_CODING_S3_WEB_SITE_BUCKET}
+        WebsiteConfiguration:
+          IndexDocument: index.html
+    BertramCodingWebSiteS3BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: BertramCodingWebSiteBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: "*"
+              Action:
+              - s3:GetObject
+              Resource:
+                Fn::Join: [
+                  "", [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "BertramCodingWebSiteBucket"
+                    },
+                    "/*"
+                  ]
+                ]    
+
+package:
+  exclude:
+    - 'browser/**'
+
+plugins:
+  - serverless-prune-plugin
+  - serverless-s3-sync

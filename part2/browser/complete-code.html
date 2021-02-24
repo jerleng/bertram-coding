@@ -1,0 +1,191 @@
+<html>
+    <head>
+        <title>Bertram Coding Example: Part 2</title>
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/default.min.css">
+        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script>
+        <style>
+            body {
+                font-size: 1.5em;
+            }
+        </style>
+    </head>
+    <body>
+<pre><code class="html">
+    &lt;html&gt;
+    &lt;head&gt;
+        &lt;!--title for page--&gt;
+        &lt;title&gt;Bertram Coding Example: Part 2&lt;/title&gt;
+
+        &lt;!--helper libray for page style--&gt;
+        &lt;link href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css&quot; rel=&quot;stylesheet&quot;&gt;
+
+        &lt;!--in-page style--&gt;
+        &lt;style&gt;
+            body {
+                color: darkslateblue;
+            }
+            #overlay {
+                position: fixed; /* Sit on top of the page content */
+                display: none; /* Hidden by default */
+                width: 100%; /* Full width (cover the whole page) */
+                height: 100%; /* Full height (cover the whole page) */
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.5); /* Black background with opacity */
+                z-index: 2; /* Specify a stack order in case you&#39;re using a different order for other elements */
+                cursor: pointer; /* Add a pointer on hover */
+            } 
+            #overlay&gt;img {
+                margin-top:300px;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }           
+        &lt;/style&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;!--Bootstrap container--&gt;
+        &lt;div class=&quot;container pt-3&quot;&gt;
+            &lt;div&gt;
+                &lt;!--Main heading--&gt;
+                &lt;h1&gt;My Global Guestbook&lt;/h1&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;form-floating mb-3&quot;&gt;
+                &lt;!--Input field for name--&gt;
+                &lt;input type=&quot;text&quot; class=&quot;form-control&quot; id=&quot;name&quot; name=&quot;name&quot; placeholder=&quot;John Doe&quot; autocomplete=&quot;off&quot;&gt;
+                &lt;!--Label for input field--&gt;
+                &lt;label for=&quot;name&quot;&gt;Enter Your Name&lt;/label&gt;
+            &lt;/div&gt;            
+            &lt;div class=&quot;mb-3&quot;&gt;
+                &lt;!--Button to add name--&gt;
+                &lt;button id=&quot;add-button&quot; type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;
+                    Add
+                &lt;/button&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;mt-3&quot;&gt;
+                &lt;!--Guestbook list heading--&gt;
+                &lt;h2&gt;Visitors&lt;/h2&gt;
+                &lt;!--Visitor list--&gt;
+                &lt;ol id=&quot;visitor-list&quot;&gt;
+                &lt;/ol&gt;
+                &lt;button id=&quot;clear-button&quot; type=&quot;button&quot; class=&quot;btn btn-danger&quot;&gt;
+                    Clear
+                &lt;/button&gt;
+            &lt;/div&gt;    
+
+        &lt;/div&gt;
+        &lt;div id=&quot;overlay&quot;&gt;
+            &lt;img src=&quot;https://cutewallpaper.org/21/loading-gif-transparent-background/Isabel-PRO-Healthcare.gif&quot;/&gt;
+        &lt;/div&gt;        
+    &lt;/body&gt;
+    &lt;script type=&quot;text/javascript&quot;&gt;
+        // AWS API gateway host for services
+        const host = &#39;o4eminvrlk&#39;;
+
+        // function to show/hide &quot;busy overlay&quot;
+        function showOverlay(on) {
+            document.getElementById(&quot;overlay&quot;).style.display = on ? &quot;block&quot; : &quot;none&quot;;
+        }
+
+        // &quot;handler&quot; for adding names
+        function handleAdd(event) {
+            // button click event
+            //alert(&#39;Button clicked!&#39;);
+            event.preventDefault();
+
+            // reference input field
+            let nameInput = document.getElementById(&#39;name&#39;);
+
+            // get entered name
+            let newName = nameInput.value;
+
+            // check that a value was provided
+            if (!newName) {
+                // no new name, alert
+                alert(&#39;Please enter your name!&#39;);
+                // exit
+                return;
+            }
+            else {
+                showOverlay(true);            
+                // call microservice
+                fetch(&#39;https://&#39;+host+&#39;.execute-api.us-east-1.amazonaws.com/dev/add&#39;,
+                    {
+                        method: &#39;POST&#39;,
+                        //cors: &#39;no-cors&#39;,
+                        //referrerPolicy: &#39;unsafe-url&#39;,
+                        body: JSON.stringify({name:newName})                        
+                    })
+                    .then(response =&gt; response.json())
+                    .then(data =&gt; {
+                        console.log(data);
+                        nameInput.value = null;
+                        handleList(event);
+                    });
+                return;
+            }
+        }
+
+        function handleClear(event) {
+            showOverlay(true);            
+            fetch(&#39;https://&#39;+host+&#39;.execute-api.us-east-1.amazonaws.com/dev/clear&#39;)
+                    .then(response =&gt; response.json())
+                    .then(data =&gt; {
+                        console.log(data);
+                        handleList(event);
+                    });      
+        }
+
+        function handleList(event) {
+            showOverlay(true);            
+            let visitorList = document.getElementById(&#39;visitor-list&#39;);
+            while (visitorList.firstChild) {
+                visitorList.removeChild(visitorList.firstChild);
+            }
+            fetch(&#39;https://&#39;+host+&#39;.execute-api.us-east-1.amazonaws.com/dev/list&#39;)
+                    .then(response =&gt; response.json())
+                    .then(jsonOutput =&gt; {
+                        console.log(jsonOutput);
+                        jsonOutput.data.forEach(function(item) {
+                            let listItem = document.createElement(&#39;li&#39;);
+                            // add the new name as text for the new item
+                            listItem.innerText = item.display;
+                                // append the new item to the visitor list
+                            visitorList.appendChild(listItem);
+                        });
+                        showOverlay(false);            
+                    });            
+        }
+
+        // reference button
+        let addButton = document.getElementById(&#39;add-button&#39;);
+        // add when button clicked
+        addButton.addEventListener(&#39;click&#39;, handleAdd, false);   
+
+        // reference infput field
+        let inputField = document.getElementById(&#39;name&#39;);
+        // add when &quot;enter&quot; pressed
+        inputField.addEventListener(&#39;keypress&#39;, function(event) {
+            // check for &quot;enter&quot; 
+            if (event.keyCode == 13) {
+                // enter was pressed, forward event to handler
+                handleAdd(event);
+            }
+            //
+        }, false);        
+
+        // reference button
+        let clearButton = document.getElementById(&#39;clear-button&#39;);
+        // add when button clicked
+        clearButton.addEventListener(&#39;click&#39;, handleClear, false);   
+
+        // load in saved visitors
+        handleList();
+    &lt;/script&gt;
+&lt;/html&gt;                
+</code></pre>
+    </body>
+</html>
