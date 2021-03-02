@@ -12,7 +12,7 @@
     </head>
     <body>
 <pre><code>
-    &lt;html&gt;
+&lt;html&gt;
     &lt;head&gt;
         &lt;!--title for page--&gt;
         &lt;title&gt;Bertram Coding Example: Part 1&lt;/title&gt;
@@ -64,10 +64,14 @@
 
         // timer event
         window.setTimeout(function(){alert(&#39;Timer fired!&#39;);}, 3000);
+        // reference button
+        let addButton = document.getElementById(&#39;add-button&#39;);
+        // add when button clicked
+        addButton.addEventListener(&#39;click&#39;, function(){alert(&#39;&quot;Add&quot; button clicked!&#39;);}, false);   
 
     &lt;/script&gt;
 
-&lt;/html&gt;   
+&lt;/html&gt;  
 </code></pre>
     </body>
 </html>
