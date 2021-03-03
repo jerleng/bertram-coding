@@ -12,7 +12,7 @@
     </head>
     <body>
 <pre><code class="html">
-    &lt;html&gt;
+&lt;html&gt;
     &lt;head&gt;
         &lt;!--title for page--&gt;
         &lt;title&gt;Bertram Coding Example: Part 2&lt;/title&gt;
@@ -83,8 +83,7 @@
     &lt;/body&gt;
     &lt;script type=&quot;text/javascript&quot;&gt;
         // AWS API gateway host for services
-        const host = &#39;o4eminvrlk&#39;;
-
+        const host = &#39;0y5k5dka2b&#39;;
         // function to show/hide &quot;busy overlay&quot;
         function showOverlay(on) {
             document.getElementById(&quot;overlay&quot;).style.display = on ? &quot;block&quot; : &quot;none&quot;;
@@ -120,10 +119,18 @@
                         body: JSON.stringify({name:newName})                        
                     })
                     .then(response =&gt; response.json())
-                    .then(data =&gt; {
-                        console.log(data);
-                        nameInput.value = null;
-                        handleList(event);
+                    .then(jsonOutput =&gt; {
+                        console.log(jsonOutput);
+                        if (jsonOutput.statusCode == 200) {
+                            nameInput.value = null;
+                            handleList(event);
+                        }
+                        else return Promise.reject(jsonOutput.message || &#39;An error has occurred!&#39;);
+                    })
+                    .catch(error =&gt; {
+                        alert(error);
+                        showOverlay(false);            
+                        console.log(error);
                     });
                 return;
             }
@@ -133,10 +140,19 @@
             showOverlay(true);            
             fetch(&#39;https://&#39;+host+&#39;.execute-api.us-east-1.amazonaws.com/dev/clear&#39;)
                     .then(response =&gt; response.json())
-                    .then(data =&gt; {
-                        console.log(data);
-                        handleList(event);
-                    });      
+                    .then(jsonOutput =&gt; {
+                        if (jsonOutput.statusCode == 200) {
+                            console.log(jsonOutput);
+                            handleList(event);
+                        }
+                        else return Promise.reject(jsonOutput.message || &#39;An error has occurred!&#39;);
+                    })
+                    .catch(error =&gt; {
+                        alert(error);
+                        showOverlay(false);            
+                        console.log(error);
+                    });
+
         }
 
         function handleList(event) {
@@ -149,15 +165,24 @@
                     .then(response =&gt; response.json())
                     .then(jsonOutput =&gt; {
                         console.log(jsonOutput);
-                        jsonOutput.data.forEach(function(item) {
-                            let listItem = document.createElement(&#39;li&#39;);
-                            // add the new name as text for the new item
-                            listItem.innerText = item.display;
-                                // append the new item to the visitor list
-                            visitorList.appendChild(listItem);
-                        });
+                        if (jsonOutput.statusCode == 200) {
+                            jsonOutput.data.forEach(function(item) {
+                                let listItem = document.createElement(&#39;li&#39;);
+                                // add the new name as text for the new item
+                                listItem.innerText = item.display;
+                                    // append the new item to the visitor list
+                                visitorList.appendChild(listItem);
+                            });
+                            showOverlay(false);            
+                        }
+                        else return Promise.reject(jsonOutput.message || &#39;An error has occurred!&#39;);
+                    })
+                    .catch(error =&gt; {
+                        alert(error);
                         showOverlay(false);            
-                    });            
+                        console.log(error);
+                    });
+
         }
 
         // reference button
@@ -185,7 +210,7 @@
         // load in saved visitors
         handleList();
     &lt;/script&gt;
-&lt;/html&gt;                
+&lt;/html&gt;           
 </code></pre>
     </body>
 </html>

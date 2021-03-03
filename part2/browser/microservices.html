@@ -34,6 +34,9 @@
         amazonES: { credentials: new AWS.EnvironmentCredentials(&#39;AWS&#39;) }
     });
     
+    // moment date/time utilities
+    const moment = require(&#39;moment&#39;);
+    
     // cross-domain HTTP headers to send with responses
     const CORS_HEADERS = {
         &quot;Access-Control-Allow-Origin&quot;: &quot;*&quot;, 
@@ -48,7 +51,7 @@
         // wrap initial work in a promise
         return new Promise(function(resolve, reject) {
             // read input
-            let entry = {dateCreated: new Date()};        
+            let entry = {dateCreated: moment().format()};        
             if (event.queryStringParameters) entry.display = event.queryStringParameters.name;
             if (!entry.display &amp;&amp; event.body) entry.display = JSON.parse(event.body).name;         
             if (!entry.display) {
@@ -59,21 +62,44 @@
             // normalize the name to use it as a key
             entry.name = entry.display.toLowerCase().trim();
     
-            // put into the object database (dynamodb)
+            // check fo existing
             let dynamoDbParams = {
                 TableName: process.env.BERTRAM_CODING_GUESTBOOK_DYNAMODB_TABLE,
-                Key: {name: entry.name},
-                Item: entry
+                Key: {name: entry.name}
             };
-            dynamoDb.put(dynamoDbParams, (error, dbOutput) =&gt; {
-                console.log(&#39;dbOutput&#39;,dbOutput,&#39;error&#39;,error);
+            dynamoDb.get(dynamoDbParams, (error, data) =&gt; {
+                console.log(&#39;getFromDynamoDb&#39;,JSON.stringify(data), error);
                 if (error) {
-                    output.message = error.toString()
-                    // fail the wrapper promise
-                    reject(&#39;Could not save in dynamodb&#39;);
+                    reject(error);
                 }
-                // resolve the wrapper promise
-                else resolve(entry);
+                else if (!data || !data.Item) {
+                    resolve(entry);
+                }
+                else {
+                    reject(&#39;Entry already exists!&#39;);
+                }
+            });
+    
+        })
+        .then(function(entry) {
+            // put into the object database (dynamodb)
+            return new Promise(function(resolve, reject) {
+                let dynamoDbParams = {
+                    TableName: process.env.BERTRAM_CODING_GUESTBOOK_DYNAMODB_TABLE,
+                    Key: {name: entry.name},
+                    Item: entry
+                };
+                dynamoDb.put(dynamoDbParams, (error, dbOutput) =&gt; {
+                    console.log(&#39;dbOutput&#39;,dbOutput,&#39;error&#39;,error);
+                    if (error) {
+                        output.message = error.toString()
+                        // fail the wrapper promise
+                        reject(&#39;Could not save in dynamodb&#39;);
+                    }
+                    // resolve the wrapper promise
+                    else resolve(entry);
+                });
+    
             });
         })
         .then(function(entry) {
@@ -106,6 +132,8 @@
         .then(function(entry) {
             console.log(&#39;s3 output&#39;, JSON.stringify(entry));
             // save the entry in ES
+            // use a real date
+            entry.dateCreated = moment(entry.dateCreated).toDate();
             // already returns a promise
             return esClient.index({
                 index: process.env.BERTRAM_CODING_GUESTBOOK_ES_INDEX,
@@ -127,6 +155,7 @@
         .catch(function(err) {
             console.log(&#39;err&#39;, err, JSON.stringify(err));
             output.statusCode = output.statusCode || 500;
+            output.message = err;
             callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS, body: JSON.stringify(output)});
         });
     };
@@ -219,9 +248,10 @@
         .then(function(s3output) {
             console.log(&#39;s3 output&#39;, JSON.stringify(s3output));
             // delete the entire elasticsearch index
-            return esClient.indices.delete({ &quot;index&quot;: process.env.BERTRAM_CODING_GUESTBOOK_ES_INDEX });
+            return esClient.indices.delete({ &quot;allow_no_indices&quot;:true, &quot;index&quot;: process.env.BERTRAM_CODING_GUESTBOOK_ES_INDEX });
         })    
-        .then(function(entry) {
+        .then(function(esOutput) {
+            console.log(&#39;ES output&#39;, JSON.stringify(esOutput));
             output.message = &#39;All entries cleared&#39;;
             output.statusCode = 200;
             callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS,  body: JSON.stringify(output)});
@@ -232,7 +262,7 @@
             output.statusCode = output.statusCode || 500;
             callback(null,{statusCode: output.statusCode, headers:CORS_HEADERS, body: JSON.stringify(output)});
         });
-    };                 
+    };              
 </code></pre>
     </body>
 </html>

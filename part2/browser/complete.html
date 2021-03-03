@@ -69,8 +69,7 @@
     </body>
     <script type="text/javascript">
         // AWS API gateway host for services
-        const host = 'o4eminvrlk';
-
+        const host = '0y5k5dka2b';
         // function to show/hide "busy overlay"
         function showOverlay(on) {
             document.getElementById("overlay").style.display = on ? "block" : "none";
@@ -106,10 +105,18 @@
                         body: JSON.stringify({name:newName})                        
                     })
                     .then(response => response.json())
-                    .then(data => {
-                        console.log(data);
-                        nameInput.value = null;
-                        handleList(event);
+                    .then(jsonOutput => {
+                        console.log(jsonOutput);
+                        if (jsonOutput.statusCode == 200) {
+                            nameInput.value = null;
+                            handleList(event);
+                        }
+                        else return Promise.reject(jsonOutput.message || 'An error has occurred!');
+                    })
+                    .catch(error => {
+                        alert(error);
+                        showOverlay(false);            
+                        console.log(error);
                     });
                 return;
             }
@@ -119,10 +126,19 @@
             showOverlay(true);            
             fetch('https://'+host+'.execute-api.us-east-1.amazonaws.com/dev/clear')
                     .then(response => response.json())
-                    .then(data => {
-                        console.log(data);
-                        handleList(event);
-                    });      
+                    .then(jsonOutput => {
+                        if (jsonOutput.statusCode == 200) {
+                            console.log(jsonOutput);
+                            handleList(event);
+                        }
+                        else return Promise.reject(jsonOutput.message || 'An error has occurred!');
+                    })
+                    .catch(error => {
+                        alert(error);
+                        showOverlay(false);            
+                        console.log(error);
+                    });
+
         }
 
         function handleList(event) {
@@ -135,15 +151,24 @@
                     .then(response => response.json())
                     .then(jsonOutput => {
                         console.log(jsonOutput);
-                        jsonOutput.data.forEach(function(item) {
-                            let listItem = document.createElement('li');
-                            // add the new name as text for the new item
-                            listItem.innerText = item.display;
-                                // append the new item to the visitor list
-                            visitorList.appendChild(listItem);
-                        });
+                        if (jsonOutput.statusCode == 200) {
+                            jsonOutput.data.forEach(function(item) {
+                                let listItem = document.createElement('li');
+                                // add the new name as text for the new item
+                                listItem.innerText = item.display;
+                                    // append the new item to the visitor list
+                                visitorList.appendChild(listItem);
+                            });
+                            showOverlay(false);            
+                        }
+                        else return Promise.reject(jsonOutput.message || 'An error has occurred!');
+                    })
+                    .catch(error => {
+                        alert(error);
                         showOverlay(false);            
-                    });            
+                        console.log(error);
+                    });
+
         }
 
         // reference button

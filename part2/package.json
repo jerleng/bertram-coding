@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "dependencies": {
     "elasticsearch": "^16.7.2",
-    "http-aws-es": "^6.0.0"
+    "http-aws-es": "^6.0.0",
+    "moment": "^2.29.1"
   },
   "devDependencies": {
     "serverless-cloudfront-invalidate": "^1.8.0",
